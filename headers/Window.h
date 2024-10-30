@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <Shader.h>
 
 class Window {
 public:
@@ -18,6 +19,8 @@ public:
 private:
 	GLFWwindow* window;
 	int width, height;
+
+	Shader shader;
 
 	static Window* windowInstance;
 };

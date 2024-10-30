@@ -39,3 +39,10 @@ assimp/
 assimp-5.3.1/
 Textures/
 objects/
+
+/out
+bin/
+build/
+/.vs
+.idea/
+CMakeSettings.json
