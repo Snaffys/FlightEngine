@@ -4,6 +4,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+
 #include <fstream>
 
 class Shader {
@@ -13,8 +15,18 @@ public:
 
     void Activate();
     
-    void setInt(const GLchar* name, const int value);
-    void setFloat(const GLchar* name, const float value);
+    void setInt(const GLchar* name, int value);
+    void setFloat(const GLchar* name, float value);
+
+    void Uniform_matrix(const GLchar* name, glm::mat4& trans);
+
+    void setVec3(const GLchar* name, glm::vec3& values);
+    void setVec3(const GLchar* name, float firestValue, float secondValue, float thirdValue);
+
+    void setMat4(const GLchar* name, const glm::mat4& mat);
+
+    void setBool(const GLchar* name, bool value);
+
 private:
     unsigned int id;
     GLuint vertexShader, fragmentShader;

@@ -5,7 +5,7 @@
 
 class Application {
 public:
-	Application();
+	Application(unsigned int majVer = 4, unsigned int minVer = 1);
 
 	~Application();
 };

@@ -57,3 +57,28 @@ char* Shader::getFileContents(const char* filename) {
 	printf("Error in getting %s content", filename);
 	exit(1);
 }
+
+
+void Shader::setInt(const GLchar* name, int value) {
+	glUniform1i(glGetUniformLocation(id, name), value);
+}
+
+void Shader::setFloat(const GLchar* name, float value) {
+	glUniform1f(glGetUniformLocation(id, name), value);
+}
+
+void Shader::setVec3(const GLchar* name, glm::vec3& values) {
+	//glUniform3fv(glGetUniformLocation(id, name), 1, glm::value_ptr(values));
+}
+
+void Shader::setVec3(const GLchar* name, float firstValue, float secondValue, float thirdValue) {
+	glUniform3f(glGetUniformLocation(id, name), firstValue, secondValue, thirdValue);
+}
+
+void Shader::setMat4(const GLchar* name, const glm::mat4& mat) {
+	glUniformMatrix4fv(glGetUniformLocation(id, name), 1, GL_FALSE, &mat[0][0]);
+}
+
+void Shader::setBool(const GLchar* name, bool value) {
+	glUniform1i(glGetUniformLocation(id, name), value);
+}

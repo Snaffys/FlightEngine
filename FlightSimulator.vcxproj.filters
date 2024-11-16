@@ -27,11 +27,29 @@
     <ClInclude Include="headers\Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\Window.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="headers\Shader.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\VBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\VAO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\IBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\FBO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Window.h">
+      <Filter>Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -50,13 +68,57 @@
     <ClCompile Include="src\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\VBO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VAO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\IBO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FBO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\fragment\text.frag">
-      <Filter>Shaders\fragment</Filter>
-    </None>
     <None Include="shaders\vertex\test.vert">
       <Filter>Shaders\vertex</Filter>
     </None>
+    <None Include="shaders\fragment\postProc.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\vertex\postProc.vert">
+      <Filter>Shaders\vertex</Filter>
+    </None>
+    <None Include="shaders\vertex\cubemap.vert">
+      <Filter>Shaders\vertex</Filter>
+    </None>
+    <None Include="shaders\fragment\cubemap.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\fragment\text.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\fragment\plane.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\vertex\plane.vert">
+      <Filter>Shaders\vertex</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\planetHeightMap.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
