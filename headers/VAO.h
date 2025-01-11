@@ -12,6 +12,8 @@ public:
     VAO() = default;
 	VAO(VBO& vbo);
 
+	bool IsValid();
+
 	void MatInstance(const int index, VBO& VBO);
 	void VecInstance(int index, VBO& VBO);
 

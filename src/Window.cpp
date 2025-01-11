@@ -1,5 +1,4 @@
 #include <Window.h>
-
 Window* Window::windowInstance = nullptr;
 
 Window::Window(unsigned int width, unsigned int height) {
@@ -28,7 +27,7 @@ Window::Window(unsigned int width, unsigned int height) {
         glm::vec3(0.0f, 1.0f, 0.0f), 100.0f);
 
     //camera = Camera(glm::vec3(67.0f, 627.5f, 169.9f), glm::vec3(0.0f, 0.0f, -1.0f),
-//    glm::vec3(0.0f, 1.0f, 0.0f), 1000.0f);
+    //glm::vec3(0.0f, 1.0f, 0.0f), 1000.0f);
 
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
@@ -62,25 +61,11 @@ Window::Window(unsigned int width, unsigned int height) {
         });
     postProcVao = PosTex2DVao(postProcVbo);
 
-    //terrainVbo = VBO({
-    //    { 0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, 0.0f,0.0f},  // top right
-    //    { 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 0.0f,0.0f},  // bottom right 
-    //    {-0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f, 0.0f,0.0f},  // bottom left 
-    //    {-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f, 0.0f,0.0f}   // top left
-    //    });
-    //terrainVao = VAO(terrainVbo);
-    //// always bind IBO after VAO
-    //terrainIbo = IBO({
-    //    { 0,1,3 },
-    //    { 1,2,3 }
-    //    });
-
     planeVbo = VBO({
         {-0.3f, -0.1f, -0.9f},
         {0.0f, 0.3f, -0.9f},
         {0.3f, -0.1f, -0.9f}
         });
-
     planeVao = Pos3DVao(planeVbo);
 
     cubemapVbo = {
@@ -133,12 +118,17 @@ Window::Window(unsigned int width, unsigned int height) {
     postProcFbo = FBO(width, height, postProcTex);
 
     srand(time(NULL));
-    // set size
-    fNoiseSeed2D = new float[nOutputWidth * nOutputHeight];
-    fPerlinNoise2D = new float[nOutputWidth * nOutputHeight];
-
-    for (unsigned int i = 0; i < nOutputWidth * nOutputHeight; i++)
+    // perlin noise seed creation 2D
+    fNoiseSeed2D = new float[vertexWidthAmount * vertexHeightAmount];
+    fPerlinNoise2D = new float[vertexWidthAmount * vertexHeightAmount];
+    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount; i++)
         fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
+
+    // perlin noise seed creation 3D
+    fNoiseSeed3D = new float[vertexWidthAmount * vertexHeightAmount * nOutputDepth];
+    fPerlinNoise3D = new float[vertexWidthAmount * vertexHeightAmount * nOutputDepth];
+    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount * nOutputDepth; i++)
+        fNoiseSeed3D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
 }
 
 void Window::launch() {
@@ -148,54 +138,60 @@ void Window::launch() {
     glEnable(GL_DEPTH_TEST);
 
     unsigned int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-    int ver = (nOutputWidth - 1) / meshSimplificationIncrement + 1;
+    int vertsPerLine = (vertexWidthAmount - 1) / meshSimplificationIncrement + 1;
+    const unsigned int numStrips = (vertexHeightAmount - 1) / meshSimplificationIncrement;     
+    const unsigned int numVertsPerStrip = vertsPerLine * 2;  // each strip consitst of squares each square is 2 triangle (2 lines)
+    
+    try {
+        while (!glfwWindowShouldClose(window)) {
+            // for proper movement for every PC
+            float currentFrame = glfwGetTime();
+            deltaTime = currentFrame - lastFrame;
+            lastFrame = currentFrame;
 
-    const unsigned int NUM_STRIPS = (nOutputHeight - 1) / meshSimplificationIncrement;     
-    const unsigned int NUM_VERTS_PER_STRIP = ver * 2;
+            processInput(window);
+
+            postProcFbo.BindFramebuffer();
+            glEnable(GL_DEPTH_TEST);
+
+            glClearColor(0.1f, 0.3f, 0.6f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            terrainShader.Activate();
+
+            glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
+            terrainShader.setMat4("projection", projection);
+            glm::mat4 view = camera.GetViewMatrix();
+            terrainShader.setMat4("view", view);
+
+            glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+            //model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
+           // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            terrainShader.setMat4("model", model);
+
+            if (polygonMode)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            else
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+            glDisable(GL_CULL_FACE);
 
 
-    while (!glfwWindowShouldClose(window)) {
-        // for proper movement for every PC
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+            UpdateVisibleChunks();
 
-        processInput(window);
 
-        postProcFbo.BindFramebuffer();
-        glEnable(GL_DEPTH_TEST);
+            //auto start = std::chrono::high_resolution_clock::now();
 
-        glClearColor(0.1f, 0.3f, 0.6f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        terrainShader.Activate();
+            updateThread();
 
-        glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
-        terrainShader.setMat4("projection", projection);
-        glm::mat4 view = camera.GetViewMatrix();
-        terrainShader.setMat4("view", view);
+            // Visible chunks rendering
+            for (Chunk& chunk : lastVisibleChunks) {
 
-        glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-        //model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
-       // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-        terrainShader.setMat4("model", model);
-
-        if (polygonMode)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        else
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        glDisable(GL_CULL_FACE);
-
-        UpdateVisibleChunks();
-
-        for (Chunk& chunk : lastVisibleChunks) {
-
-            glm::vec3 chunkCenter(chunk.position.x + nOutputWidth, 0.0f, chunk.position.y + nOutputHeight);
-            float distanceToChunk = glm::distance(camera.GetCameraPosition(), chunkCenter);
+                glm::vec3 chunkCenter(chunk.position.x + vertexWidthAmount, 0.0f, chunk.position.y + vertexHeightAmount);
+                float distanceToChunk = glm::distance(camera.GetCameraPosition(), chunkCenter);
 
                 glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 
-                model = glm::translate(glm::mat4(1.0f), glm::vec3(chunk.position.x * nOutputWidth, 0.0f, chunk.position.y * nOutputHeight));
+                model = glm::translate(glm::mat4(1.0f), glm::vec3(chunk.position.x * vertexWidthAmount, 0.0f, chunk.position.y * vertexHeightAmount));
 
                 //model = glm::scale(model, glm::vec3(100.0f, 1.0f, 10.0f));
 
@@ -203,79 +199,76 @@ void Window::launch() {
                 terrainShader.setFloat("posX", chunk.position.x);
                 terrainShader.setFloat("posZ", chunk.position.y);
 
+                if (chunk.terrainVaoC.IsValid()) {
+                    chunk.terrainVaoC.Bind();
+                    // render the mesh triangle strip by triangle strip - each row at a time
+                    for (unsigned int strip = 0; strip < numStrips; ++strip)
+                    {
+                        glDrawElements(GL_TRIANGLE_STRIP,   // primitive type
+                            numVertsPerStrip, // number of indices to render
+                            GL_UNSIGNED_INT,     // index data type
+                            (void*)(sizeof(unsigned int)
+                                * numVertsPerStrip
+                                * strip)); // offset to starting index
+                    }
+                }
+            }
 
-                chunk.terrainVaoC.Bind();
-                // render the mesh triangle strip by triangle strip - each row at a time
-                for (unsigned int strip = 0; strip < NUM_STRIPS; ++strip)
-                {
-                    glDrawElements(GL_TRIANGLE_STRIP,   // primitive type
-                        NUM_VERTS_PER_STRIP, // number of indices to render
-                        GL_UNSIGNED_INT,     // index data type
-                        (void*)(sizeof(unsigned int)
-                            * NUM_VERTS_PER_STRIP
-                            * strip)); // offset to starting index
-                } 
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+            glDisable(GL_CULL_FACE);
+
+
+            // PLANE__________________________________________________________________________________________________________
+            // planeShader.Activate();
+            // //glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
+            // planeShader.setMat4("projection", projection);
+            // //glm::mat4 view = camera.GetViewMatrix();
+            // planeShader.setMat4("view", view);
+
+            // //glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+            // model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
+            //// model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            // planeShader.setMat4("model", model);
+
+            // planeVao.Bind();
+            // glDrawArrays(GL_TRIANGLES, 0, 3);
+            //__________________________________________________________________________________________________________________
+
+
+            glEnable(GL_CULL_FACE);
+
+
+            // CUBEMAP
+            glDepthFunc(GL_LEQUAL); // depth test passes when values are equal or less than depth buffer's content
+            cubemapShader.Activate();
+            cubemapShader.setInt("cubemap", cubemapTex.GetId());
+            glm::mat4 cubemapView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+            cubemapShader.setMat4("projection", projection);
+            cubemapShader.setMat4("view", cubemapView);
+            cubemapVao.Bind();
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glDepthFunc(GL_LESS);   // set depth function to default
+
+            postProcFbo.UnbindFramebuffer();
+            glDisable(GL_DEPTH_TEST);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            // FRAMEBUFFER
+            postProcShader.Activate();
+            postProcVao.Bind();
+            postProcShader.setInt("screenTexture", postProcTex.GetId());
+            postProcShader.setFloat("exposure", exposure);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
         }
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        glDisable(GL_CULL_FACE);
-
-        planeShader.Activate();
-
-        //glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
-        planeShader.setMat4("projection", projection);
-        //glm::mat4 view = camera.GetViewMatrix();
-        planeShader.setMat4("view", view);
-
-        //glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-        model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
-       // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-        planeShader.setMat4("model", model);
-
-        planeVao.Bind();
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        glEnable(GL_CULL_FACE);
-
-
-        // CUBEMAP
-        glDepthFunc(GL_LEQUAL); // depth test passes when values are equal or less than depth buffer's content
-        cubemapShader.Activate();
-        cubemapShader.setInt("cubemap", cubemapTex.GetId());
-        glm::mat4 cubemapView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-        cubemapShader.setMat4("projection", projection);
-        cubemapShader.setMat4("view", cubemapView);
-        cubemapVao.Bind();
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glDepthFunc(GL_LESS);   // set depth function to default
-
-        postProcFbo.UnbindFramebuffer();
-        glDisable(GL_DEPTH_TEST);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // FRAMEBUFFER
-        postProcShader.Activate();
-        postProcVao.Bind();
-        postProcShader.setInt("screenTexture", postProcTex.GetId());
-        postProcShader.setFloat("exposure", exposure);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-
-
-        //printf("%d \n", chunks.size());
+    }
+    catch (const char* errorMessage) {
+        std::cout << errorMessage << std::endl;
     }
 }
-
-//void Window::RequestMapData() {
-//
-//}
-//
-//void Window::MapDataThread() {
-//
-//}
 
 void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -310,14 +303,18 @@ void Window::processInput(GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
 
     // Process movement
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         camera.ProcessKeyPress(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         camera.ProcessKeyPress(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         camera.ProcessKeyPress(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.ProcessKeyPress(LEFT, deltaTime);
+    }
 
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
         polygonMode = false;
@@ -332,10 +329,9 @@ void Window::processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && !octavePressed) {
         nOctaveCount++;
         octavePressed = true;
-        if (nOctaveCount == 10 || nOutputWidth < pow(2.0f, nOctaveCount - 1))
+        if (nOctaveCount == 10 || vertexWidthAmount < pow(2.0f, nOctaveCount - 1))
             nOctaveCount = 1;
 
-        chunks.clear();
         UpdateVisibleChunks();
 
 
@@ -344,10 +340,9 @@ void Window::processInput(GLFWwindow* window) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
-        for (unsigned int i = 0; i < nOutputHeight * nOutputWidth; i++)
+        for (unsigned int i = 0; i < vertexHeightAmount * vertexWidthAmount; i++)
             fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
 
-        chunks.clear(); 
         UpdateVisibleChunks();
     }
 
@@ -355,7 +350,6 @@ void Window::processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
         fScalingBias += 0.2;
 
-        chunks.clear(); 
         UpdateVisibleChunks();
 
 
@@ -366,52 +360,11 @@ void Window::processInput(GLFWwindow* window) {
         if (fScalingBias < 0.2)
             fScalingBias = 0.2;
 
-        chunks.clear(); 
         UpdateVisibleChunks();
 
         printf("\nscaling bias:%f", fScalingBias);
     }
 
-}
-
-void Window::test() {
-
-    //float maxNoiseHeight = 1.0f;
-    //float minNoiseHeight = 0.0f;
-    //
-    //float scale = 1;
-
-    //for (int x = 0; x < nOutputWidth; x++) {
-    //    for (int y = 0; y < nOutputHeight; y++)
-    //    {
-    //        float amplitude = 1;
-    //        float frequency = 1;
-    //        float noiseHeight = 0;
-    //        float persistance = 1;
-    //        float lacunarity = 1;
-
-    //        for (int i = 0; i < nOctaveCount; i++) {
-    //            float sampleX = x / scale * frequency;
-    //            float sampleY = y / scale * frequency;
-
-    //            float perlinValue = 0;
-
-    //            noiseHeight += perlinValue * amplitude;
-
-    //            amplitude *= persistance;
-    //            frequency *= lacunarity;
-    //        }
-
-    //        if (noiseHeight > maxNoiseHeight)
-    //            maxNoiseHeight = noiseHeight;
-    //        else if (noiseHeight < minNoiseHeight)
-    //            minNoiseHeight = noiseHeight;
-
-    //        fPerlinNoise2D[y * nOutputWidth + x] = noiseHeight;   // make range of output between 0 and 1
-    //        fPerlinNoise2D[y * nOutputWidth + x] *= 256;
-
-    //    }
-    //}
 }
 
 void Window::PerlinNoise2D(int mapWidth, int mapHeight, float* fSeed, int nOctaves, float bias, float* mapOutput) {
@@ -423,10 +376,10 @@ void Window::PerlinNoise2D(int mapWidth, int mapHeight, float* fSeed, int nOctav
 
             float scale = 1.0f;    // determines how much lower the contribution for each octave is (makes higher octaves more significant effect)
 
-            for (int o = 0; o < nOctaves; o++)
+            for (int oct = 0; oct < nOctaves; oct++)
             {
-                int nPitchX = mapWidth >> o;  // make octave more persistent every loop
-                int nPitchY = mapHeight >> o;
+                int nPitchX = mapWidth >> oct;  // make octave more persistent every loop
+                int nPitchY = mapHeight >> oct;
 
                 int nSampleX1 = (x / nPitchX) * nPitchX;
                 int nSampleX2 = (nSampleX1 + nPitchX) % mapWidth;  // '%' to make values wrap around
@@ -453,100 +406,6 @@ void Window::PerlinNoise2D(int mapWidth, int mapHeight, float* fSeed, int nOctav
     }
 }
 
-
-void Window::PerlinNoise3D(int mapWidth, int mapHeight, int mapDepth, float* fSeed, int nOctaves, float bias, float* mapOutput) {
-
-    for (int x = 0; x < mapWidth; x++) {
-        for (int y = 0; y < mapHeight; y++) {
-            for (int z = 0; z < mapDepth; z++) {
-                float noise = 0.0f;
-                float maxScale = 0.0f;
-                float scale = 1.0f;
-                for (int oct = 0; oct < nOctaves; oct++) {
-
-                    int nPitchX = mapWidth >> oct;
-                    int nPitchY = mapHeight >> oct;
-                    int nPitchZ = mapDepth >> oct;
-
-                    int nSampleX1 = (x / nPitchX) * nPitchX;
-                    int nSampleX2 = (nSampleX1 + nPitchX) % mapWidth;  // '%' to make values wrap around
-
-                    int nSampleY1 = (y / nPitchY) * nPitchY;
-                    int nSampleY2 = (nSampleY1 + nPitchY) % mapHeight;
-
-                    int nSampleZ1 = (z / nPitchZ) * nPitchZ;
-                    int nSampleZ2 = (nSampleZ1 + nPitchZ) % mapDepth;
-
-                    float fBlendX = fade((float)(x - nSampleX1) / (float)nPitchX);
-                    float fBlendY = fade((float)(y - nSampleY1) / (float)nPitchY);
-                    float fBlendZ = fade((float)(z - nSampleZ1) / (float)nPitchZ);
-
-                    float fSampleTF = lerp(fSeed[nSampleY1 * mapWidth + nSampleZ1 * (mapWidth * mapHeight) + nSampleX1], fSeed[nSampleY1 * mapWidth + nSampleZ1 * (mapWidth * mapHeight) + nSampleX2], fBlendX);   // interpolate between 2 top values
-                    float fSampleTB = lerp(fSeed[nSampleY1 * mapWidth + nSampleZ2 * (mapWidth * mapHeight) + nSampleX1], fSeed[nSampleY1 * mapWidth + nSampleZ2 * (mapWidth * mapHeight) + nSampleX2], fBlendX);   // interpolate between 2 top values
-                    float fSampleBF = lerp(fSeed[nSampleY2 * mapWidth + nSampleZ1 * (mapWidth * mapHeight) + nSampleX1], fSeed[nSampleY2 * mapWidth + nSampleZ1 * (mapWidth * mapHeight) + nSampleX2], fBlendX);   // interpolate between 2 bottom values
-                    float fSampleBB = lerp(fSeed[nSampleY2 * mapWidth + nSampleZ2 * (mapWidth * mapHeight) + nSampleX1], fSeed[nSampleY2 * mapWidth + nSampleZ2 * (mapWidth * mapHeight) + nSampleX2], fBlendX);   // interpolate between 2 bottom values
-
-                    maxScale += scale;    // maximum possible number for fitting output in range
-
-                    float fSampleTop = lerp(fSampleTF, fSampleTB, fBlendZ);
-                    float fSampleBottom = lerp(fSampleBF, fSampleBB, fBlendZ);
-
-                    noise += lerp(fSampleTop, fSampleBottom, fBlendY) * scale;   // interpolate between top and bottom interpolation results
-
-                    //scale *= scale / bias;
-                    scale /= bias;
-                }
-
-                mapOutput[y * mapWidth + z * (mapWidth * mapHeight) + x] = (noise / maxScale);   // make range of output between 0 and 1
-                mapOutput[y * mapWidth + z * (mapWidth * mapHeight) + x] *= 256;
-            }
-        }
-    }
-}
-
-void Window::generateTerrain3D(Chunk& chunk) {
-    PerlinNoise3D(nOutputWidth, nOutputHeight, nOutputDepth, fNoiseSeed2D, nOctaveCount, fScalingBias, fPerlinNoise2D);
-
-    unsigned int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-    int verticesPerLine = (nOutputWidth - 1) / meshSimplificationIncrement + 1;
-
-
-
-    std::vector<float> vertices;
-
-
-    for (unsigned int i = 0; i < nOutputWidth; i += meshSimplificationIncrement) {
-        for (unsigned int j = 0; j < nOutputHeight; j += meshSimplificationIncrement) {
-            for (unsigned int k = 0; k < nOutputDepth; k += meshSimplificationIncrement) {
-                float y = (float)((fPerlinNoise2D[j * nOutputWidth + i]));
-
-                //chunk.vertices.push_back(-nOutputWidth * 2.0f + i);
-                //chunk.vertices.push_back(y - 0);
-                //chunk.vertices.push_back(-nOutputHeight * 2.0f + j);
-                chunk.vertices.push_back(i);
-                chunk.vertices.push_back(y - 0);
-                chunk.vertices.push_back(j);
-            }
-        }
-    }
-
-    std::vector<unsigned int> indices;
-
-
-    for (unsigned int i = 0; i < verticesPerLine - 1; i++)     // for each row (strip)
-        for (unsigned int j = 0; j < verticesPerLine; j++)    // for each column
-            for (unsigned int k = 0; k < 2; k++)            // for each side of the strip (leftand right primitives in square)
-                chunk.indices.push_back(verticesPerLine * (i + k) + j);   // top left -> top right -> bottom left -> bottom right
-
-
-
-
-    chunk.terrainVboC = VBO(chunk.vertices);
-    chunk.terrainVaoC = TerrainVao(chunk.terrainVboC);
-    chunk.terrainIboC = IBO(chunk.indices);
-}
-
-
 float Window::lerp(float a, float b, float t) {
     return a + (b - a) * t;
 }
@@ -558,20 +417,24 @@ float Window::fade(float t) {
 }
 
 void Window::generateTerrain(Chunk& chunk) {
-    PerlinNoise2D(nOutputWidth, nOutputHeight, fNoiseSeed2D, nOctaveCount, fScalingBias, fPerlinNoise2D);
+    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount; i++)
+        fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
+
+    PerlinNoise2D(vertexWidthAmount, vertexHeightAmount, fNoiseSeed2D, nOctaveCount, fScalingBias, fPerlinNoise2D);
 
     unsigned int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-    int verticesPerLine = (nOutputWidth - 1) / meshSimplificationIncrement + 1;
+    // -1 because last indexes of vertices start with 0
+    int verticesPerLine = ((vertexWidthAmount - 1) / meshSimplificationIncrement) + 1;
 
     std::vector<float> vertices;
-    float yShift = (nOutputWidth + nOutputHeight) / 2.0;
-    for (unsigned int i = 0; i < nOutputWidth; i+=meshSimplificationIncrement) {
-        for (unsigned int j = 0; j < nOutputHeight; j+=meshSimplificationIncrement) {
-            float y = (float)((fPerlinNoise2D[j * nOutputWidth + i]));
+    float yShift = (vertexWidthAmount + vertexHeightAmount) / 2.0;
+    for (unsigned int i = 0; i < vertexWidthAmount; i+=meshSimplificationIncrement) {
+        for (unsigned int j = 0; j < vertexHeightAmount; j+=meshSimplificationIncrement) {
+            float y = (float)((fPerlinNoise2D[j * vertexWidthAmount + i]));
 
-            //chunk.vertices.push_back(-nOutputWidth * 2.0f + i);
+            //chunk.vertices.push_back(-vertexWidthAmount * 2.0f + i);
             //chunk.vertices.push_back(y - 0);
-            //chunk.vertices.push_back(-nOutputHeight * 2.0f + j);
+            //chunk.vertices.push_back(-vertexHeightAmount * 2.0f + j);
             chunk.vertices.push_back(i);
             chunk.vertices.push_back(y - 0);
             chunk.vertices.push_back(j);
@@ -584,56 +447,95 @@ void Window::generateTerrain(Chunk& chunk) {
             for (unsigned int k = 0; k < 2; k++)            // for each side of the strip (leftand right primitives in square)
                 chunk.indices.push_back(verticesPerLine * (i + k) + j);   // top left -> top right -> bottom left -> bottom right
 
-    chunk.terrainVboC = VBO(chunk.vertices);
-    chunk.terrainVaoC = TerrainVao(chunk.terrainVboC);
-    chunk.terrainIboC = IBO(chunk.indices);
+
+    //chunk.terrainVboC = VBO(chunk.vertices);
+    //chunk.terrainVaoC = TerrainVao(chunk.terrainVboC);
+    //chunk.terrainIboC = IBO(chunk.indices);
+}
+
+
+void Window::UpdateVisibleChunks() {
+    for (Chunk& chunk : lastVisibleChunks) {
+        if(chunks.find(chunk.position) != chunks.end())
+            chunk.loaded = false;
+    }
+    lastVisibleChunks.clear();
+    
+    int currentChunkCoordX = floor(camera.GetCameraPosition().x / chunkSize);
+    int currentChunkCoordZ = floor(camera.GetCameraPosition().z / chunkSize);
+
+    for (int yOffset = -chunksVisibleInViewDst; yOffset <= chunksVisibleInViewDst - 1; yOffset++) {
+        for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst - 1; xOffset++) {
+            glm::vec2 viewedChunkCoord = glm::vec2(currentChunkCoordX + xOffset, currentChunkCoordZ + yOffset);
+            
+            if (chunks.find(viewedChunkCoord) != chunks.end()) {
+                Chunk foundedChunk = chunks.at(viewedChunkCoord);
+                updateChunk(foundedChunk, maxViewDst, currentChunkCoordX, currentChunkCoordZ);
+
+                if (foundedChunk.loaded == true)
+                    lastVisibleChunks.push_back(foundedChunk);
+            }
+            else {
+                Chunk chunk;
+                chunk.position = viewedChunkCoord;
+                chunk.loaded = false;
+                chunks.insert({ chunk.position, chunk });
+
+                requestMapData(viewedChunkCoord, onMapDataReceived);
+            }
+        }
+    }
 }
 
 void Window::updateChunk(Chunk& chunk, unsigned int maxViewDst, int chunkCoordX, int chunkCoordY) {
-    float xPos = chunk.position.x * nOutputWidth + ((chunkCoordX < chunk.position.x) * nOutputWidth);
-    float zPos = chunk.position.y * nOutputHeight + ((chunkCoordY < chunk.position.y) * nOutputHeight);
+    float xPos = chunk.position.x * vertexWidthAmount + ((chunkCoordX < chunk.position.x) * vertexWidthAmount);
+    float zPos = chunk.position.y * vertexHeightAmount + ((chunkCoordY < chunk.position.y) * vertexHeightAmount);
 
     bool visible = distance(glm::vec3(camera.GetCameraPosition().x, 0.0, camera.GetCameraPosition().z), glm::vec3(xPos, 0, zPos)) <= maxViewDst;
     chunk.loaded = visible;
 }
 
-void Window::UpdateVisibleChunks() {
+void Window::requestMapData(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&)) {
+    std::thread thread([this, chunkPos, callbackFunc]() {
+        mapDataThread(chunkPos, callbackFunc);
+    });
+    thread.detach();
+}  
 
-    for (Chunk& chunk : lastVisibleChunks)
-        chunk.loaded = false;
-    lastVisibleChunks.clear();
-    
-    int currentChunkCoordX = floor(camera.GetCameraPosition().x / chunkSize);
-    int currentChunkCoordY = floor(camera.GetCameraPosition().z / chunkSize);
 
-    bool chunkNotGenerated = true;
-
-    for (int yOffset = -chunksVisibleInViewDst; yOffset <= chunksVisibleInViewDst; yOffset++) {
-        for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst; xOffset++) {
-            glm::vec2 viewedChunkCoord = glm::vec2(currentChunkCoordX + xOffset, currentChunkCoordY + yOffset);
-            for (Chunk& chunk : chunks)
-            {
-                if (chunk.position == viewedChunkCoord) {
-                    updateChunk(chunk, maxViewDst, currentChunkCoordX, currentChunkCoordY);
-
-                    if (chunk.loaded == true)
-                        lastVisibleChunks.push_back(chunk);
-
-                    chunkNotGenerated = false;
-                    break;
-                }
-            }
-            if (chunkNotGenerated) {
-                Chunk chunk;
-                generateTerrain(chunk);
-
-                chunk.position = viewedChunkCoord;
-                chunk.loaded = false;
-                chunks.push_back(chunk);
-            }
-            chunkNotGenerated = true;
-        }
+void Window::mapDataThread(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&)) {
+    Chunk chunk;
+    generateTerrain(chunk);
+    chunk.position = chunkPos;
+    chunk.loaded = false;
+    {
+        queueMutex.lock();
+        chunks[chunkPos] = chunk;
+        mapDataThreadInfoQueue.push(MapThreadInfo(callbackFunc, chunks[chunkPos]));
+        queueMutex.unlock();
     }
+}
+
+void Window::updateThread() {
+    while (!mapDataThreadInfoQueue.empty()) {
+        MapThreadInfo threadInfo = mapDataThreadInfoQueue.front();
+        mapDataThreadInfoQueue.pop();
+        threadInfo.callback(threadInfo.parameter);
+    }
+}
+
+void Window::onMapDataReceived(Chunk& chunk) {
+    windowInstance->chunks[chunk.position].terrainVboC = VBO(chunk.vertices);
+    windowInstance->chunks[chunk.position].terrainVaoC = TerrainVao(chunk.terrainVboC);
+    windowInstance->chunks[chunk.position].terrainIboC = IBO(chunk.indices);
+}
+
+void Window::LODMesh(int lod) {
+    this->lod = lod;
+}
+
+void Window::RequestMesh(Chunk chunk) {
+    this->hasRequestedMesh = true;
 }
 
 Window::~Window() {}

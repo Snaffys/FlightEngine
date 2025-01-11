@@ -55,6 +55,10 @@ TerrainVao::TerrainVao(VBO& VBO) {
 	VBO.Unbind();
 }
 
+bool VAO::IsValid() {
+	return glIsVertexArray(id);
+}
+
 void VAO::Bind() {
 	glBindVertexArray(id);
 }

@@ -14,6 +14,21 @@
 #include "FBO.h"
 #include "Texture.h"
 
+#include "unordered_map"
+
+#include <functional>
+#include <thread>
+
+#include <queue>
+
+
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <functional> // For std::function
+
+
+#include <future>  // For std::async
 
 struct Chunk {
 	std::vector<float> vertices;
@@ -27,6 +42,30 @@ struct Chunk {
 	IBO terrainIboC;
 };
 
+namespace std {
+	template <>
+	struct hash<glm::vec2> {
+		size_t operator()(const glm::vec2& v) const {
+			// gets hash values of x and y
+			size_t h1 = hash<float>{}(v.x);
+			size_t h2 = hash<float>{}(v.y);
+			// Combine the two hashes
+			//return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+			return h1 ^ (h2 << 1);
+		}
+	};
+}
+
+struct MapThreadInfo {
+	// Define the callback type as a function taking T and returning void
+	void (*callback)(Chunk&);
+	Chunk parameter;
+
+	// Constructor to initialize callback and parameter
+	MapThreadInfo(void (*callback)(Chunk&), Chunk parameter)
+		: callback(callback), parameter(parameter) {}
+};
+
 
 class Window {
 public:
@@ -36,6 +75,11 @@ public:
 
 	~Window();
 private:
+	bool hasRequestedMesh;
+	bool hasMesh;
+	int lod;
+
+
 	static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 	static void mouseCallback(GLFWwindow* window, double xPos, double yPos);
 	void processInput(GLFWwindow* window);
@@ -90,18 +134,26 @@ private:
 	bool octavePressed = false;
 
 	// should be odd for proper LOD calculation
-	int nOutputWidth = 257;
-	int nOutputHeight = 257;
+	int vertexWidthAmount = 257;
+	int vertexHeightAmount = 257;
 	int nOutputDepth = 257;
 
 	float* fNoiseSeed2D = nullptr;	// random noise
 	float* fPerlinNoise2D = nullptr;	// output perlin noise
 
+
+	float* fNoiseSeed3D = nullptr;	// random noise
+	float* fPerlinNoise3D = nullptr;	// output perlin noise
+
 	void PerlinNoise2D(int nWidth, int nHeight, float* fSeed, int nOctaves, float fBias, float* fOutput);
 	void PerlinNoise3D(int mapWidth, int mapHeight, int mapDepth, float* fSeed, int nOctaves, float bias, float* mapOutput);
 
+	float worleyNoise3D(int x, int y, int z);
+	int hash3D(int x, int y, int z);
 
-	std::vector<Chunk> chunks;
+
+	//std::vector<Chunk> chunks;
+	std::unordered_map<glm::vec2, Chunk> chunks;
 
 	std::vector<Chunk> lastVisibleChunks;
 
@@ -110,12 +162,19 @@ private:
 	unsigned int levelOfDetail = 0;
 
 	float maxViewDst = 600;
-	int chunkSize = nOutputWidth - 1;
+	int chunkSize = vertexWidthAmount - 1;
 	int chunksVisibleInViewDst = int(maxViewDst) / chunkSize;
 
-	void test();
+	std::mutex queueMutex;
+	std::queue<MapThreadInfo> mapDataThreadInfoQueue;
+	void requestMapData(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&));
+	void mapDataThread(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&));
+	void updateThread();
+	static void onMapDataReceived(Chunk& chunk);
 
-	void generateTerrain3D(Chunk& chunk);
+	void LODMesh(int lod);
+	void RequestMesh(Chunk chunk);
+
 };
 
 #endif

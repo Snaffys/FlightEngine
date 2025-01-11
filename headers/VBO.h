@@ -48,6 +48,10 @@ public:
 	VBO(std::initializer_list<Pos3D> coords);
 	VBO(std::vector<float> vertices);
 
+	int getId() {
+		return id;
+	}
+
     void Bind();
 	void Unbind();
 	void Delete();
