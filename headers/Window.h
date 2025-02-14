@@ -7,65 +7,25 @@
 
 #include <stb/stb_image.h>
 
-#include "Shader.h"
-#include "VAO.h"
-#include "Camera.h"
-#include "IBO.h"
+//#include "Shader.h"
+//#include "VAO.h"
+//#include "Camera.h"
+//#include "IBO.h"
 #include "FBO.h"
-#include "Texture.h"
+//#include "Texture.h"
+#include "Terrain.h"
+#include "Model.h"
 
 #include "unordered_map"
-
+//#include <glm/vec2.hpp>
 #include <functional>
 #include <thread>
 
 #include <queue>
 
-
-#include <thread>
-#include <mutex>
-#include <queue>
-#include <functional> // For std::function
-
-
-#include <future>  // For std::async
-
-struct Chunk {
-	std::vector<float> vertices;
-	std::vector<unsigned int> indices;
-	glm::vec2 position;
-
-	bool loaded;
-
-	VBO terrainVboC;
-	TerrainVao terrainVaoC;
-	IBO terrainIboC;
-};
-
-namespace std {
-	template <>
-	struct hash<glm::vec2> {
-		size_t operator()(const glm::vec2& v) const {
-			// gets hash values of x and y
-			size_t h1 = hash<float>{}(v.x);
-			size_t h2 = hash<float>{}(v.y);
-			// Combine the two hashes
-			//return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-			return h1 ^ (h2 << 1);
-		}
-	};
-}
-
-struct MapThreadInfo {
-	// Define the callback type as a function taking T and returning void
-	void (*callback)(Chunk&);
-	Chunk parameter;
-
-	// Constructor to initialize callback and parameter
-	MapThreadInfo(void (*callback)(Chunk&), Chunk parameter)
-		: callback(callback), parameter(parameter) {}
-};
-
+//#include <thread>
+//#include <mutex>
+//#include <queue>
 
 class Window {
 public:
@@ -75,29 +35,34 @@ public:
 
 	~Window();
 private:
-	bool hasRequestedMesh;
-	bool hasMesh;
-	int lod;
+
+	void ProcessMouseMove1(float x_offset, float y_offset);
 
 
+	GLFWwindow* window;
+	static Window* windowInstance;
+	int width, height;
+	Camera camera;
+
+	double lastX, lastY;
+	bool firstMouse = true;
+	float deltaTime = 0.0f;
+	float lastFrame = 0.0f;
+
+
+
+
+	// input callbacks
 	static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 	static void mouseCallback(GLFWwindow* window, double xPos, double yPos);
 	void processInput(GLFWwindow* window);
-
-	void UpdateVisibleChunks();
-
-	void generateTerrain(Chunk& chunk);
-
-	float lerp(float a, float b, float t);
-	float fade(float t);
-
-	GLFWwindow* window;
-	int width, height;
 
 	Shader terrainShader;
 	Shader postProcShader;
 	Shader cubemapShader;
 	Shader planeShader;
+	Shader terrainShaderNormals;
+	Shader modelShader;
 
 	Texture cubemapTex;
 	Texture postProcTex;
@@ -114,67 +79,38 @@ private:
 
 	FBO postProcFbo;
 
-	Camera camera;
-	double lastX, lastY;
-	bool firstMouse = true;
-	float deltaTime = 0.0f;
-	float lastFrame = 0.0f;
-
 	float exposure = 1.0f;
 
-	static Window* windowInstance;
-
-	bool polygonMode = false;
-
+	Terrain terrain;
+	int nOutputDepth = 257;
 	int nOctaveCount = 8;
-
-
 	float fScalingBias = 2.0f;
-
+	unsigned int levelOfDetail = 0;
+	bool polygonMode = false;
 	bool octavePressed = false;
 
-	// should be odd for proper LOD calculation
-	int vertexWidthAmount = 257;
-	int vertexHeightAmount = 257;
-	int nOutputDepth = 257;
-
-	float* fNoiseSeed2D = nullptr;	// random noise
-	float* fPerlinNoise2D = nullptr;	// output perlin noise
+	const float viewerMoveThreasholdForChnkUpdt = 25;
+	const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThreasholdForChnkUpdt * viewerMoveThreasholdForChnkUpdt;
+	glm::vec2 cameraPostionOld = glm::vec2(0,0);
 
 
-	float* fNoiseSeed3D = nullptr;	// random noise
-	float* fPerlinNoise3D = nullptr;	// output perlin noise
 
-	void PerlinNoise2D(int nWidth, int nHeight, float* fSeed, int nOctaves, float fBias, float* fOutput);
-	void PerlinNoise3D(int mapWidth, int mapHeight, int mapDepth, float* fSeed, int nOctaves, float bias, float* mapOutput);
-
-	float worleyNoise3D(int x, int y, int z);
-	int hash3D(int x, int y, int z);
+	float planeRotationDegreesHorizontal = 0;
+	float planeRotationDegreesVertical = 0;
+	glm::vec3 planePosition = glm::vec3(0.0);
+	glm::vec3 planeFront = glm::vec3(0, 0, -1);
 
 
-	//std::vector<Chunk> chunks;
-	std::unordered_map<glm::vec2, Chunk> chunks;
+	bool freeCamera = true;
+	bool shiftWasPressed = false;
+	bool freeCamPrevious = true;
+	glm::vec2 savedCursorPos = glm::vec2(0,0);
+	float turnRate = 0;
+	glm::quat cameraOrientation = glm::quat(1, 0, 0, 0);
 
-	std::vector<Chunk> lastVisibleChunks;
-
-	void updateChunk(Chunk& chunk, unsigned int maxViewDst, int chunkCoordX, int chunkCoordY);
-
-	unsigned int levelOfDetail = 0;
-
-	float maxViewDst = 600;
-	int chunkSize = vertexWidthAmount - 1;
-	int chunksVisibleInViewDst = int(maxViewDst) / chunkSize;
-
-	std::mutex queueMutex;
-	std::queue<MapThreadInfo> mapDataThreadInfoQueue;
-	void requestMapData(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&));
-	void mapDataThread(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&));
-	void updateThread();
-	static void onMapDataReceived(Chunk& chunk);
-
-	void LODMesh(int lod);
-	void RequestMesh(Chunk chunk);
-
+	Model modelM;
 };
+
+
 
 #endif

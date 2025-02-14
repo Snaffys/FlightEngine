@@ -23,20 +23,28 @@ Window::Window(unsigned int width, unsigned int height) {
     lastX = width / 2.0f;
     lastY = height / 2.0f;
 
-    camera = Camera(glm::vec3(0.0f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
+    //maxViewDst = terrain.detailLevels.back().visibleDstThreshold;
+
+    camera = Camera(glm::vec3(0.0f, 300.5f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
         glm::vec3(0.0f, 1.0f, 0.0f), 100.0f);
 
     //camera = Camera(glm::vec3(67.0f, 627.5f, 169.9f), glm::vec3(0.0f, 0.0f, -1.0f),
     //glm::vec3(0.0f, 1.0f, 0.0f), 1000.0f);
+
+    planePosition = camera.getCameraPosition() + glm::vec3(0.0f, -10.0f, -30.0f);
+
+    terrain = Terrain(&camera);
 
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
 
     // SHADERS
     terrainShader = Shader("shaders/vertex/test.vert", "shaders/fragment/text.frag");
+    terrainShaderNormals = Shader("shaders/fragment/test3.vert", "shaders/fragment/test1.frag", "shaders/fragment/test2.geom");
     postProcShader = Shader("shaders/vertex/postProc.vert", "shaders/fragment/postProc.frag");
     cubemapShader = Shader("shaders/vertex/cubemap.vert", "shaders/fragment/cubemap.frag");
     planeShader = Shader("shaders/vertex/plane.vert", "shaders/fragment/plane.frag");
+    modelShader = Shader("shaders/vertex/model.vert", "shaders/fragment/model.frag");
 
     // TEXTURES
     char faces[][100] = {
@@ -49,8 +57,10 @@ Window::Window(unsigned int width, unsigned int height) {
     };
     cubemapTex = { sizeof(faces) / sizeof(faces)[0], sizeof(faces[0]) / sizeof(faces[0])[0], (char*)faces };
 
+    //modelM = ("C:/ProGGraming/FlightSimulator/FlightSimulator/res/models/sword/scene.gltf");
+
     // VBO/VAO/IBO
-    postProcVbo = VBO({
+    postProcVbo = {
         // vertex		    // texCoords
         {-1.0f,  1.0f,		0.0f, 1.0f},
         { 1.0f, -1.0f,		1.0f, 0.0f},
@@ -58,14 +68,54 @@ Window::Window(unsigned int width, unsigned int height) {
         {-1.0f,  1.0f,		0.0f, 1.0f},
         { 1.0f,  1.0f,		1.0f, 1.0f},
         { 1.0f, -1.0f,		1.0f, 0.0f}
-        });
+        };
     postProcVao = PosTex2DVao(postProcVbo);
 
-    planeVbo = VBO({
-        {-0.3f, -0.1f, -0.9f},
-        {0.0f, 0.3f, -0.9f},
-        {0.3f, -0.1f, -0.9f}
-        });
+    planeVbo = {
+        // BACK
+        {-1.0f,  1.0f, -1.0f},  // top left
+        { 1.0f,  1.0f, -1.0f},  // top right
+        { 1.0f, -1.0f, -1.0f},  // bottom right
+        { 1.0f, -1.0f, -1.0f},  // bottom right
+        {-1.0f, -1.0f, -1.0f},  // bottom left
+        {-1.0f,  1.0f, -1.0f},  // top left
+        // RIGHT
+        { 1.0f,  1.0f, -1.0f},  // top left
+        { 1.0f,  1.0f,  1.0f},  // top right
+        { 1.0f, -1.0f,  1.0f},  // bottom right
+        { 1.0f, -1.0f,  1.0f},  // bottom right
+        { 1.0f, -1.0f, -1.0f},  // bottom left
+        { 1.0f,  1.0f, -1.0f},  // top left
+        // LEFT
+        {-1.0f,  1.0f,  1.0f},   // top left
+        {-1.0f,  1.0f, -1.0f},   // top right
+        {-1.0f, -1.0f, -1.0f},   // bottom right
+        {-1.0f, -1.0f, -1.0f},   // bottom right
+        {-1.0f, -1.0f,  1.0f},   // bottom left
+        {-1.0f,  1.0f,  1.0f},   // top left
+        // FRONT
+        {-1.0f, -1.0f,  1.0f},  // bottom left
+        { 1.0f, -1.0f,  1.0f},  // bottom right
+        { 1.0f,  1.0f,  1.0f},  // top right
+        { 1.0f,  1.0f,  1.0f},  // top right
+        {-1.0f,  1.0f,  1.0f},  // top left
+        {-1.0f, -1.0f,  1.0f},  // bottom left
+        // TOP
+        {-1.0f,  1.0f,  1.0f},  // top left
+        { 1.0f,  1.0f,  1.0f},  // top right
+        { 1.0f,  1.0f, -1.0f},  // bottom right
+        { 1.0f,  1.0f, -1.0f},  // bottom right
+        {-1.0f,  1.0f, -1.0f},  // bottom left
+        {-1.0f,  1.0f,  1.0f},  // top left
+        // BOTTOM
+        {-1.0f, -1.0f, -1.0f},  // top left
+        { 1.0f, -1.0f, -1.0f},  // top right
+        { 1.0f, -1.0f,  1.0f},  // bottom right
+        { 1.0f, -1.0f,  1.0f},  // bottom right
+        {-1.0f, -1.0f,  1.0f},  // bottom left
+        {-1.0f, -1.0f, -1.0f}   // top left
+    };
+
     planeVao = Pos3DVao(planeVbo);
 
     cubemapVbo = {
@@ -116,19 +166,6 @@ Window::Window(unsigned int width, unsigned int height) {
 
     // FBO
     postProcFbo = FBO(width, height, postProcTex);
-
-    srand(time(NULL));
-    // perlin noise seed creation 2D
-    fNoiseSeed2D = new float[vertexWidthAmount * vertexHeightAmount];
-    fPerlinNoise2D = new float[vertexWidthAmount * vertexHeightAmount];
-    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount; i++)
-        fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
-
-    // perlin noise seed creation 3D
-    fNoiseSeed3D = new float[vertexWidthAmount * vertexHeightAmount * nOutputDepth];
-    fPerlinNoise3D = new float[vertexWidthAmount * vertexHeightAmount * nOutputDepth];
-    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount * nOutputDepth; i++)
-        fNoiseSeed3D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
 }
 
 void Window::launch() {
@@ -136,12 +173,9 @@ void Window::launch() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
     glEnable(GL_DEPTH_TEST);
-
-    unsigned int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-    int vertsPerLine = (vertexWidthAmount - 1) / meshSimplificationIncrement + 1;
-    const unsigned int numStrips = (vertexHeightAmount - 1) / meshSimplificationIncrement;     
-    const unsigned int numVertsPerStrip = vertsPerLine * 2;  // each strip consitst of squares each square is 2 triangle (2 lines)
     
+    terrain.updateVisibleChunks();
+
     try {
         while (!glfwWindowShouldClose(window)) {
             // for proper movement for every PC
@@ -150,6 +184,19 @@ void Window::launch() {
             lastFrame = currentFrame;
 
             processInput(window);
+
+            if (!freeCamera) {
+
+                ProcessMouseMove1(turnRate, planeRotationDegreesVertical);
+                camera.setCameraFront(planeFront);
+                camera.ProcessKeyPress(FORWARD, deltaTime, planeFront, glm::vec3(0.0,1.0,0.0));
+                //if(planeRotationDegreesVertical > 90 && planeRotationDegreesVertical < 270)
+                //    camera.ProcessKeyPress(BACKWARD, deltaTime);
+                //else
+                //    camera.ProcessKeyPress(FORWARD, deltaTime);
+                //camera.ProcessKeyPress(UP, planeRotationDegreesVertical / 10000.0f);
+                //camera.ProcessKeyPress(RIGHT, planeRotationDegreesHorizontal / 10000.0f);
+            }
 
             postProcFbo.BindFramebuffer();
             glEnable(GL_DEPTH_TEST);
@@ -160,13 +207,13 @@ void Window::launch() {
 
             glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
             terrainShader.setMat4("projection", projection);
-            glm::mat4 view = camera.GetViewMatrix();
+            glm::mat4 view = camera.getViewMatrix();
             terrainShader.setMat4("view", view);
 
-            glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+            //glm::mat4 model = glm::mat4(1.0f);
             //model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
            // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            terrainShader.setMat4("model", model);
+            //terrainShader.setMat4("model", model);
 
             if (polygonMode)
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -175,42 +222,77 @@ void Window::launch() {
 
             glDisable(GL_CULL_FACE);
 
+            float lengthOfADistance = glm::length(cameraPostionOld - glm::vec2(camera.getCameraPosition().x, camera.getCameraPosition().z));
+            if (lengthOfADistance * lengthOfADistance > sqrViewerMoveThresholdForChunkUpdate) {
+                cameraPostionOld = glm::vec2(camera.getCameraPosition().x, camera.getCameraPosition().z);
+                terrain.updateVisibleChunks();
+            }
 
-            UpdateVisibleChunks();
-
-
-            //auto start = std::chrono::high_resolution_clock::now();
-
-            updateThread();
+            terrain.updateThread();
 
             // Visible chunks rendering
-            for (Chunk& chunk : lastVisibleChunks) {
+            for (Chunk* chunk : terrain.getVisibleChunks()) {
+                glm::vec2 chunkPos = chunk->getPosition();
 
-                glm::vec3 chunkCenter(chunk.position.x + vertexWidthAmount, 0.0f, chunk.position.y + vertexHeightAmount);
-                float distanceToChunk = glm::distance(camera.GetCameraPosition(), chunkCenter);
+                glm::mat4 model = glm::mat4(1.0f);
 
-                glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+                //model = glm::translate(model, glm::vec3(chunkPos.x * terrain.getVertexWidthAmount() - 10, 0.0f, chunkPos.y * terrain.getVertexHeightAmount()));
+                //printf("%d\n", chunkPos.x * terrain.getVertexWidthAmount());
+                model = glm::translate(model, glm::vec3(int(chunkPos.x * (terrain.getVertexWidthAmount() - 1)), 0.0f, chunkPos.y * (terrain.getVertexHeightAmount() - 1)));
 
-                model = glm::translate(glm::mat4(1.0f), glm::vec3(chunk.position.x * vertexWidthAmount, 0.0f, chunk.position.y * vertexHeightAmount));
+                //float posX = chunkPos.x * (terrain.getVertexWidthAmount() - 1);
+               // posX = round(posX / 20.0f) * 20.0f;  // Round to the nearest multiple of 20
+                //model = glm::translate(model, glm::vec3(posX, 0.0f, 0.0));
+
+                //model = glm::translate(glm::mat4(1.0f), glm::vec3(chunkPos.x * terrain.getVertexWidthAmount() + (chunkPos.x != 0), 0.0f, chunkPos.y * terrain.getVertexHeightAmount() + (chunkPos.y != 0)));
 
                 //model = glm::scale(model, glm::vec3(100.0f, 1.0f, 10.0f));
 
                 terrainShader.setMat4("model", model);
-                terrainShader.setFloat("posX", chunk.position.x);
-                terrainShader.setFloat("posZ", chunk.position.y);
+                terrainShader.setFloat("posX", chunkPos.x);
+                terrainShader.setFloat("posZ", chunkPos.y);
 
-                if (chunk.terrainVaoC.IsValid()) {
-                    chunk.terrainVaoC.Bind();
+                if (chunk->getVAO().IsValid()) {
+                    chunk->getVAO().Bind();
+
+                    terrainShader.Activate();
+                    terrainShader.setMat4("projection", projection);
+                    terrainShader.setMat4("view", view);
+                    terrainShader.setMat4("model", model);
+                    terrainShader.setFloat("posX", chunkPos.x);
+                    terrainShader.setFloat("posZ", chunkPos.y);
+                    
                     // render the mesh triangle strip by triangle strip - each row at a time
-                    for (unsigned int strip = 0; strip < numStrips; ++strip)
+                    for (unsigned int strip = 0; strip < chunk->getNumStrips(); ++strip)
                     {
                         glDrawElements(GL_TRIANGLE_STRIP,   // primitive type
-                            numVertsPerStrip, // number of indices to render
+                            chunk->getNumVertsPerStrip(), // number of indices to render
                             GL_UNSIGNED_INT,     // index data type
                             (void*)(sizeof(unsigned int)
-                                * numVertsPerStrip
+                                * chunk->getNumVertsPerStrip()
                                 * strip)); // offset to starting index
                     }
+
+
+                    //terrainShaderNormals.Activate();
+                    //terrainShaderNormals.setMat4("projection", projection);
+                    //terrainShaderNormals.setMat4("view", view);
+                    //terrainShaderNormals.setMat4("model", model);
+                    //terrainShaderNormals.setFloat("posX", chunkPos.x);
+                    //terrainShaderNormals.setFloat("posZ", chunkPos.y);
+
+                    //chunk->getVAO().Bind();
+
+                    //// render the mesh triangle strip by triangle strip - each row at a time
+                    //for (unsigned int strip = 0; strip < chunk->getNumStrips(); ++strip)
+                    //{
+                    //    glDrawElements(GL_TRIANGLE_STRIP,   // primitive type
+                    //        chunk->getNumVertsPerStrip(), // number of indices to render
+                    //        GL_UNSIGNED_INT,     // index data type
+                    //        (void*)(sizeof(unsigned int)
+                    //            * chunk->getNumVertsPerStrip()
+                    //            * strip)); // offset to starting index
+                    //}
                 }
             }
 
@@ -218,21 +300,33 @@ void Window::launch() {
 
             glDisable(GL_CULL_FACE);
 
+            //modelM.Draw(modelShader, camera);
 
             // PLANE__________________________________________________________________________________________________________
-            // planeShader.Activate();
-            // //glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
-            // planeShader.setMat4("projection", projection);
-            // //glm::mat4 view = camera.GetViewMatrix();
-            // planeShader.setMat4("view", view);
+             planeShader.Activate();
+             //glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)width / height, 0.1f, 10000000.0f);
+             glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+             //glm::mat4 view = camera.GetViewMatrix();
+             if (freeCamera) {
+                 model = glm::translate(model, planePosition);
+                 planeShader.setMat4("projection", projection);
+                 planeShader.setMat4("view", view);
+             }
+             else {
+                 model = glm::translate(model, glm::vec3(0.0f, -10.0f, -30.0f));
+                 planeShader.setMat4("projection", projection);
+                 planeShader.setMat4("view", glm::mat4(1.0f));
+             }
 
-            // //glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-            // model = glm::scale(model, glm::vec3(1000.0f, 500.0f, 1000.0f));
-            //// model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            // planeShader.setMat4("model", model);
 
-            // planeVao.Bind();
-            // glDrawArrays(GL_TRIANGLES, 0, 3);
+
+             model = glm::scale(model, glm::vec3(5.0f, 5.0f, 5.0f));
+             //model = glm::rotate(model, glm::radians(planeRotationDegreesVertical), glm::vec3(1, 0, 0));
+             model = glm::rotate(model, glm::radians(planeRotationDegreesHorizontal), glm::vec3(0, 0, 1));
+             planeShader.setMat4("model", model);
+
+             planeVao.Bind();
+             glDrawArrays(GL_TRIANGLES, 0, planeVbo.getVertexCount());
             //__________________________________________________________________________________________________________________
 
 
@@ -243,26 +337,32 @@ void Window::launch() {
             glDepthFunc(GL_LEQUAL); // depth test passes when values are equal or less than depth buffer's content
             cubemapShader.Activate();
             cubemapShader.setInt("cubemap", cubemapTex.GetId());
-            glm::mat4 cubemapView = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+            glm::mat4 cubemapView = glm::mat4(glm::mat3(camera.getViewMatrix()));
             cubemapShader.setMat4("projection", projection);
             cubemapShader.setMat4("view", cubemapView);
             cubemapVao.Bind();
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glDrawArrays(GL_TRIANGLES, 0, cubemapVbo.getVertexCount());
             glDepthFunc(GL_LESS);   // set depth function to default
 
             postProcFbo.UnbindFramebuffer();
             glDisable(GL_DEPTH_TEST);
             glClear(GL_COLOR_BUFFER_BIT);
 
+
+
+            
+
             // FRAMEBUFFER
             postProcShader.Activate();
             postProcVao.Bind();
             postProcShader.setInt("screenTexture", postProcTex.GetId());
             postProcShader.setFloat("exposure", exposure);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, postProcVbo.getVertexCount());
 
             glfwSwapBuffers(window);
             glfwPollEvents();
+
+            //printf("%f\n", planeRotationDegreesHorizontal);
         }
     }
     catch (const char* errorMessage) {
@@ -283,37 +383,137 @@ void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) 
 
 
 void Window::mouseCallback(GLFWwindow* window, double xPos, double yPos) {
+if (windowInstance->freeCamera) {
+        if (windowInstance->firstMouse) {
+            windowInstance->lastX = xPos;
+            windowInstance->lastY = yPos;
+            windowInstance->firstMouse = false;
+        }
 
-    if (windowInstance->firstMouse) {
+        float xOffset = xPos - windowInstance->lastX;
+        float yOffset = windowInstance->lastY - yPos;
         windowInstance->lastX = xPos;
         windowInstance->lastY = yPos;
-        windowInstance->firstMouse = false;
+
+        windowInstance->camera.ProcessMouseMove(xOffset, yOffset);
     }
-
-    float xOffset = xPos - windowInstance->lastX;
-    float yOffset = windowInstance->lastY - yPos;
-    windowInstance->lastX = xPos;
-    windowInstance->lastY = yPos;
-
-    windowInstance->camera.ProcessMouseMove(xOffset, yOffset);
 }
 
 void Window::processInput(GLFWwindow* window) {
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        if (!shiftWasPressed) {
+                shiftWasPressed = true;
+                freeCamera = !freeCamera;
+                if (freeCamera) {
+                    firstMouse = true;
+                    camera.resetCamera();
+                    glfwSetCursorPos(window, savedCursorPos.x, savedCursorPos.y);
+                    planePosition = camera.getCameraPosition() + glm::vec3(0.0f, -10.0f, -30.0f);
+                    //planeFront = camera.getCameraFront();
+                    camera.setCameraPosition(camera.getCameraPosition() + glm::vec3(0.0, 15.0, 15.0));
+                }
+                else {
+                    //camera.setCameraFront(planeFront);
+                    camera.setCameraFront(glm::vec3(0.0,0.0,-1.0f));
+                    //camera.setCameraFront(glm::vec3(0,0,-1));
+                    camera.setCameraPosition(planePosition - glm::vec3(0.0f, -10.0f, -30.0f));
+                }
+        }
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE) {
+        shiftWasPressed = false;
+    }
+
+
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    // Process movement
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera.ProcessKeyPress(FORWARD, deltaTime);
+    if (freeCamera) {
+        // Process movement
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            camera.ProcessKeyPress(FORWARD, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            camera.ProcessKeyPress(BACKWARD, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            camera.ProcessKeyPress(RIGHT, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            camera.ProcessKeyPress(LEFT, deltaTime);
+        }
+        //if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        //    camera.ProcessKeyPress(UP, deltaTime);
+        //}
+        //if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+        //    camera.ProcessKeyPress(DOWN, deltaTime);
+        //}
     }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera.ProcessKeyPress(BACKWARD, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera.ProcessKeyPress(RIGHT, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera.ProcessKeyPress(LEFT, deltaTime);
+
+    if (!freeCamera) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            //if (planeRotationDegreesVertical < 45.0f)
+                planeRotationDegreesVertical += 0.1;
+            if (planeRotationDegreesVertical == 360)
+                planeRotationDegreesVertical = 0;
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            //if (planeRotationDegreesVertical > -45.0f)
+                planeRotationDegreesVertical -= 0.1;
+            if (planeRotationDegreesVertical == -360)
+                planeRotationDegreesVertical = 0;
+        }
+        if(glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE && planeRotationDegreesVertical != 0){
+            if (planeRotationDegreesVertical > 0) {
+                planeRotationDegreesVertical -= 0.1;
+            }
+            else if (planeRotationDegreesVertical < 0) {
+                planeRotationDegreesVertical += 0.1;
+            }
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            if (planeRotationDegreesHorizontal < 90.0f) {
+                planeRotationDegreesHorizontal += 0.1;
+                if (planeRotationDegreesHorizontal >= 0.0f) {
+
+                    turnRate += 0.1;
+                }
+                else {
+                    turnRate -= 0.1;
+                }
+            }
+            else {
+                turnRate += 9 / planeRotationDegreesHorizontal;
+            }
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            if (planeRotationDegreesHorizontal > -90.0f) {
+                planeRotationDegreesHorizontal -= 0.1;
+                if (planeRotationDegreesHorizontal <= 0.0f) {
+                    turnRate -= 0.1;
+                }
+                else {
+                    turnRate += 0.1;
+                }
+
+                //turnRate = 900 / planeRotationDegreesHorizontal;
+            }
+            else {
+                turnRate += 9 / planeRotationDegreesHorizontal;
+            }
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE && planeRotationDegreesHorizontal != 0) {
+            if (planeRotationDegreesHorizontal > 0) {
+                planeRotationDegreesHorizontal -= 0.1;
+                turnRate += 0.1;
+            }
+            else if (planeRotationDegreesHorizontal < 0) {
+                planeRotationDegreesHorizontal += 0.1;
+                turnRate -= 0.1;
+            }
+        }
     }
 
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
@@ -329,10 +529,10 @@ void Window::processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && !octavePressed) {
         nOctaveCount++;
         octavePressed = true;
-        if (nOctaveCount == 10 || vertexWidthAmount < pow(2.0f, nOctaveCount - 1))
+        if (nOctaveCount == 10 || terrain.getVertexWidthAmount() < pow(2.0f, nOctaveCount - 1))
             nOctaveCount = 1;
 
-        UpdateVisibleChunks();
+        terrain.updateVisibleChunks();
 
 
         printf("\noctave count:%u", nOctaveCount);
@@ -340,17 +540,17 @@ void Window::processInput(GLFWwindow* window) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) {
-        for (unsigned int i = 0; i < vertexHeightAmount * vertexWidthAmount; i++)
-            fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
+        //for (unsigned int i = 0; i < vertexHeightAmount * vertexWidthAmount; i++)
+        //    noiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
 
-        UpdateVisibleChunks();
+        terrain.updateVisibleChunks();
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
         fScalingBias += 0.2;
 
-        UpdateVisibleChunks();
+        terrain.updateVisibleChunks();
 
 
         printf("\nscaling bias:%f", fScalingBias);
@@ -360,182 +560,24 @@ void Window::processInput(GLFWwindow* window) {
         if (fScalingBias < 0.2)
             fScalingBias = 0.2;
 
-        UpdateVisibleChunks();
+        terrain.updateVisibleChunks();
 
         printf("\nscaling bias:%f", fScalingBias);
     }
 
 }
 
-void Window::PerlinNoise2D(int mapWidth, int mapHeight, float* fSeed, int nOctaves, float bias, float* mapOutput) {
-    for (int x = 0; x < mapWidth; x++) {
-        for (int y = 0; y < mapHeight; y++)
-        {
-            float noise = 0.0f;
-            float maxScale = 0.0f;
+void Window::ProcessMouseMove1(float x_offset, float y_offset) {
 
-            float scale = 1.0f;    // determines how much lower the contribution for each octave is (makes higher octaves more significant effect)
 
-            for (int oct = 0; oct < nOctaves; oct++)
-            {
-                int nPitchX = mapWidth >> oct;  // make octave more persistent every loop
-                int nPitchY = mapHeight >> oct;
-
-                int nSampleX1 = (x / nPitchX) * nPitchX;
-                int nSampleX2 = (nSampleX1 + nPitchX) % mapWidth;  // '%' to make values wrap around
-
-                int nSampleY1 = (y / nPitchY) * nPitchY;
-                int nSampleY2 = (nSampleY1 + nPitchY) % mapHeight;
-
-                float fBlendX = fade((float)(x - nSampleX1) / (float)nPitchX);
-                float fBlendY = fade((float)(y - nSampleY1) / (float)nPitchY);
-                float fSampleT = lerp(fSeed[nSampleY1 * mapWidth + nSampleX1], fSeed[nSampleY1 * mapWidth + nSampleX2], fBlendX);   // interpolate between 2 top values
-                float fSampleB = lerp(fSeed[nSampleY2 * mapWidth + nSampleX1], fSeed[nSampleY2 * mapWidth + nSampleX2], fBlendX);   // interpolate between 2 bottom values
-
-                maxScale += scale;    // maximum possible number for fitting output in range
-
-                noise += lerp(fSampleT, fSampleB, fBlendY) * scale;   // interpolate between top and bottom interpolation results
-
-                //scale *= scale / bias;
-                scale /= bias;
-            }
-
-            mapOutput[y * mapWidth + x] = (noise / maxScale);   // make range of output between 0 and 1
-            mapOutput[y * mapWidth + x] *= 256;
-        }
-    }
+    // Calculates directions
+    glm::vec3 direction;
+    direction.z = -(cos(glm::radians(x_offset)) * cos(glm::radians(y_offset)));
+    direction.y = sin(glm::radians(y_offset));
+    direction.x = -(sin(glm::radians(x_offset)) * cos(glm::radians(y_offset)));
+    // Sets camera_front
+    planeFront = glm::normalize(direction);
 }
 
-float Window::lerp(float a, float b, float t) {
-    return a + (b - a) * t;
-}
-
-float Window::fade(float t) {
-    //return t;
-    return t * t * t * (t * (t * 6 - 15) + 10);
-    //return t* t* (3 - 2 * t);
-}
-
-void Window::generateTerrain(Chunk& chunk) {
-    for (unsigned int i = 0; i < vertexWidthAmount * vertexHeightAmount; i++)
-        fNoiseSeed2D[i] = (float)rand() / (float)RAND_MAX;	// random values [0.0, 1.0]
-
-    PerlinNoise2D(vertexWidthAmount, vertexHeightAmount, fNoiseSeed2D, nOctaveCount, fScalingBias, fPerlinNoise2D);
-
-    unsigned int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-    // -1 because last indexes of vertices start with 0
-    int verticesPerLine = ((vertexWidthAmount - 1) / meshSimplificationIncrement) + 1;
-
-    std::vector<float> vertices;
-    float yShift = (vertexWidthAmount + vertexHeightAmount) / 2.0;
-    for (unsigned int i = 0; i < vertexWidthAmount; i+=meshSimplificationIncrement) {
-        for (unsigned int j = 0; j < vertexHeightAmount; j+=meshSimplificationIncrement) {
-            float y = (float)((fPerlinNoise2D[j * vertexWidthAmount + i]));
-
-            //chunk.vertices.push_back(-vertexWidthAmount * 2.0f + i);
-            //chunk.vertices.push_back(y - 0);
-            //chunk.vertices.push_back(-vertexHeightAmount * 2.0f + j);
-            chunk.vertices.push_back(i);
-            chunk.vertices.push_back(y - 0);
-            chunk.vertices.push_back(j);
-        }
-    }
-
-    std::vector<unsigned int> indices;
-    for (unsigned int i = 0; i < verticesPerLine - 1; i++)     // for each row (strip)
-        for (unsigned int j = 0; j < verticesPerLine; j++)    // for each column
-            for (unsigned int k = 0; k < 2; k++)            // for each side of the strip (leftand right primitives in square)
-                chunk.indices.push_back(verticesPerLine * (i + k) + j);   // top left -> top right -> bottom left -> bottom right
-
-
-    //chunk.terrainVboC = VBO(chunk.vertices);
-    //chunk.terrainVaoC = TerrainVao(chunk.terrainVboC);
-    //chunk.terrainIboC = IBO(chunk.indices);
-}
-
-
-void Window::UpdateVisibleChunks() {
-    for (Chunk& chunk : lastVisibleChunks) {
-        if(chunks.find(chunk.position) != chunks.end())
-            chunk.loaded = false;
-    }
-    lastVisibleChunks.clear();
-    
-    int currentChunkCoordX = floor(camera.GetCameraPosition().x / chunkSize);
-    int currentChunkCoordZ = floor(camera.GetCameraPosition().z / chunkSize);
-
-    for (int yOffset = -chunksVisibleInViewDst; yOffset <= chunksVisibleInViewDst - 1; yOffset++) {
-        for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst - 1; xOffset++) {
-            glm::vec2 viewedChunkCoord = glm::vec2(currentChunkCoordX + xOffset, currentChunkCoordZ + yOffset);
-            
-            if (chunks.find(viewedChunkCoord) != chunks.end()) {
-                Chunk foundedChunk = chunks.at(viewedChunkCoord);
-                updateChunk(foundedChunk, maxViewDst, currentChunkCoordX, currentChunkCoordZ);
-
-                if (foundedChunk.loaded == true)
-                    lastVisibleChunks.push_back(foundedChunk);
-            }
-            else {
-                Chunk chunk;
-                chunk.position = viewedChunkCoord;
-                chunk.loaded = false;
-                chunks.insert({ chunk.position, chunk });
-
-                requestMapData(viewedChunkCoord, onMapDataReceived);
-            }
-        }
-    }
-}
-
-void Window::updateChunk(Chunk& chunk, unsigned int maxViewDst, int chunkCoordX, int chunkCoordY) {
-    float xPos = chunk.position.x * vertexWidthAmount + ((chunkCoordX < chunk.position.x) * vertexWidthAmount);
-    float zPos = chunk.position.y * vertexHeightAmount + ((chunkCoordY < chunk.position.y) * vertexHeightAmount);
-
-    bool visible = distance(glm::vec3(camera.GetCameraPosition().x, 0.0, camera.GetCameraPosition().z), glm::vec3(xPos, 0, zPos)) <= maxViewDst;
-    chunk.loaded = visible;
-}
-
-void Window::requestMapData(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&)) {
-    std::thread thread([this, chunkPos, callbackFunc]() {
-        mapDataThread(chunkPos, callbackFunc);
-    });
-    thread.detach();
-}  
-
-
-void Window::mapDataThread(glm::vec2 chunkPos, void (*callbackFunc)(Chunk&)) {
-    Chunk chunk;
-    generateTerrain(chunk);
-    chunk.position = chunkPos;
-    chunk.loaded = false;
-    {
-        queueMutex.lock();
-        chunks[chunkPos] = chunk;
-        mapDataThreadInfoQueue.push(MapThreadInfo(callbackFunc, chunks[chunkPos]));
-        queueMutex.unlock();
-    }
-}
-
-void Window::updateThread() {
-    while (!mapDataThreadInfoQueue.empty()) {
-        MapThreadInfo threadInfo = mapDataThreadInfoQueue.front();
-        mapDataThreadInfoQueue.pop();
-        threadInfo.callback(threadInfo.parameter);
-    }
-}
-
-void Window::onMapDataReceived(Chunk& chunk) {
-    windowInstance->chunks[chunk.position].terrainVboC = VBO(chunk.vertices);
-    windowInstance->chunks[chunk.position].terrainVaoC = TerrainVao(chunk.terrainVboC);
-    windowInstance->chunks[chunk.position].terrainIboC = IBO(chunk.indices);
-}
-
-void Window::LODMesh(int lod) {
-    this->lod = lod;
-}
-
-void Window::RequestMesh(Chunk chunk) {
-    this->hasRequestedMesh = true;
-}
 
 Window::~Window() {}

@@ -21,6 +21,7 @@ public:
 	IBO(std::initializer_list<Index> index);
 	IBO(std::vector<unsigned int> index);
 
+	int getId();
 	void Bind();
 	void Unbind();
 	void Delete();

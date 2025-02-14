@@ -12,6 +12,7 @@ class Shader {
 public:
     Shader() = default;
     Shader(const char* vertexPath, const char* fragmentPath);
+    Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath);
 
     void Activate();
     
@@ -29,7 +30,7 @@ public:
 
 private:
     unsigned int id;
-    GLuint vertexShader, fragmentShader;
+    GLuint vertexShader, fragmentShader, geometryShader;
 
     int compileShader(const GLuint type, const char* filename);
     char* getFileContents(const char* filename);

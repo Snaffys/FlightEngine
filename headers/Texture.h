@@ -25,6 +25,8 @@ public:
 
 	Texture(GLenum format, const unsigned int imgWidth, const unsigned int imgHeight, GLenum type, GLenum textarget, GLenum internalFormat);
 
+	Texture(const char* image, const char* texType, GLuint slot);
+
 	Texture(const int rows, const int cols, const char* faces);
 
 	void Bind();

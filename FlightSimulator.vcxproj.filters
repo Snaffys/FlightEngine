@@ -51,6 +51,15 @@
     <ClInclude Include="headers\Window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="headers\Terrain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Application.cpp">
@@ -89,6 +98,15 @@
     <ClCompile Include="src\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Terrain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\vertex\test.vert">
@@ -113,6 +131,21 @@
       <Filter>Shaders\fragment</Filter>
     </None>
     <None Include="shaders\vertex\plane.vert">
+      <Filter>Shaders\vertex</Filter>
+    </None>
+    <None Include="shaders\fragment\test1.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\fragment\test2.geom">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\fragment\test3.vert">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\fragment\model.frag">
+      <Filter>Shaders\fragment</Filter>
+    </None>
+    <None Include="shaders\vertex\model.vert">
       <Filter>Shaders\vertex</Filter>
     </None>
   </ItemGroup>

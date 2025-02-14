@@ -14,6 +14,35 @@ Texture::Texture(GLenum format, const unsigned int img_width, const unsigned int
 	glFramebufferTexture2D(GL_FRAMEBUFFER, textarget, GL_TEXTURE_2D, id, 0);
 }
 
+Texture::Texture(const char* image, const char* texType, GLuint slot){
+	type = texType;
+	int imagWidth, imgHeight, numColCh;
+	stbi_set_flip_vertically_on_load(true);
+	unsigned char* bytes = stbi_load(image, &imgWidth, &imgHeight, &numColCh, 0);
+	glGenTextures(1, &id);
+	glActiveTexture(GL_TEXTURE + slot);
+	//unit = slot;
+	Bind();
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	if (numColCh == 4)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
+	else if (numColCh == 3)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, bytes);
+	if (numColCh == 1)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, GL_RED, GL_UNSIGNED_BYTE, bytes);
+	else
+		throw std::invalid_argument("Texture type error\n");
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+	stbi_image_free(bytes);
+	Unbind();
+}
+
 Texture::Texture(const int rows, const int cols, const char* faces) {
 	glGenTextures(1, &id);
 	glActiveTexture(GL_TEXTURE0 + id - 1);
@@ -52,4 +81,8 @@ void Texture::Delete()
 
 GLuint Texture::GetId() {
 	return id - 1;
+}
+
+std::string Texture::GetType() {
+	return type;
 }

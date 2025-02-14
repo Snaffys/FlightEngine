@@ -17,10 +17,14 @@ struct PosNormTex {
 	PosNormTex(float x, float y, float z, float n_x, float n_y, float n_z, float s, float t)
 		: pos(x, y, z), normals(n_x, n_y, n_z), texCoords(s, t) {};
 
+	PosNormTex(glm::vec3 pos, glm::vec3 normals, glm::vec2 texCoords)
+		: pos(pos), normals(normals), texCoords(texCoords) {};
+
 	glm::vec3 pos;
 	glm::vec3 normals;
 	glm::vec2 texCoords;
 };
+
 struct PosTex2D {
 	PosTex2D() = default;
 
@@ -41,12 +45,18 @@ struct Pos3D {
 
 class VBO {
 public:
+	std::size_t POSITIONS;
+
     VBO() = default;
 
 	VBO(std::initializer_list<PosNormTex> coords);
+	VBO(std::vector<PosNormTex>& coords);
 	VBO(std::initializer_list<PosTex2D> coords);
 	VBO(std::initializer_list<Pos3D> coords);
 	VBO(std::vector<float> vertices);
+	VBO(std::vector<glm::vec3> vecVertices);
+
+	VBO(std::vector<glm::vec3> positions, std::vector<glm::vec3> normals);
 
 	int getId() {
 		return id;
@@ -55,15 +65,16 @@ public:
     void Bind();
 	void Unbind();
 	void Delete();
+	unsigned int getVertexCount();
 
 	~VBO();
 private:
-
 	std::vector<PosNormTex> posNormTexVec;
 	std::vector<PosTex2D> posTex2DVec;
 	std::vector<Pos3D> pos3DVec;
 
     unsigned int id;
+	unsigned int vertexCount;
 };
 
 #endif

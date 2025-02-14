@@ -14,6 +14,7 @@ int main() {
     Application application;
 
     Window window;
+    srand(time(NULL));
     window.launch();
     
     return 0;

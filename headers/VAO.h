@@ -41,7 +41,7 @@ public:
 class TerrainVao : public VAO {
 public:
 	TerrainVao() = default;
-	TerrainVao(VBO& VBO);
+	TerrainVao(VBO VBO);
 };
 
 #endif

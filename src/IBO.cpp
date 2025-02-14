@@ -35,6 +35,10 @@ void IBO::Delete()
 	glDeleteBuffers(1, &id);
 }
 
+int IBO::getId() {
+	return id;
+}
+
 IBO::~IBO() {
 	//Delete();
 }

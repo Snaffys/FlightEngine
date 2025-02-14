@@ -10,27 +10,33 @@ enum CameraMovement {
 	FORWARD,
 	BACKWARD,
 	LEFT,
-	RIGHT
+	RIGHT,
+	UP,
+	DOWN
 };
 
 class Camera {
 public:
 	Camera() = default;
 
-	Camera(glm::vec3 camera_position, glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f),
-		float movement_speed = 3.5f, float mouse_sensitivity = 0.1f, float actual_speed = 0.0f);
+	Camera(glm::vec3 cameraPosition, glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f),
+		float movementSpeed = 3.5f, float mouseSensitivity = 0.1f, float actualSpeed = 0.0f);
 
-	glm::mat4 GetViewMatrix();
+	glm::mat4 getViewMatrix();
 
 	void ProcessKeyPress(CameraMovement, float);
-	void ProcessMouseMove(float x_offset, float y_offset);
+	void ProcessKeyPress(CameraMovement direction, float delta_time, glm::vec3 objectFront, glm::vec3 objectUp = glm::vec3(0.0f, 1.0f, 0.0f));
+	void ProcessMouseMove(float xOffset, float yOffset);
 
-	glm::vec3 GetCameraPosition();
-	glm::vec3 GetCameraFront();
+	glm::vec3 getCameraPosition();
+	void setCameraPosition(glm::vec3 cameraPosition);
+	glm::vec3 getCameraFront();
+	void setCameraFront(glm::vec3 cameraFront);
+	void resetCamera();
 private:
 	float yaw = -90.0f, pitch = 0.0f;
-	float movement_speed, mouse_sensitivity, actual_speed;
-	glm::vec3 camera_position, camera_front, camera_up;
+	float movementSpeed, mouseSensitivity, actualSpeed;
+	glm::vec3 cameraPosition, cameraFront, cameraUp;
 };
 
 #endif

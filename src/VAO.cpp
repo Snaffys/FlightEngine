@@ -45,13 +45,31 @@ Pos3DVao::Pos3DVao(VBO& VBO) {
 }
 
 
-TerrainVao::TerrainVao(VBO& VBO) {
+TerrainVao::TerrainVao(VBO VBO) {
+	//glGenVertexArrays(1, &id);
+	//Bind();
+	//VBO.Bind();
+	//// Vertex
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	//VBO.Unbind();
+
+		
+
+
+
+
 	glGenVertexArrays(1, &id);
 	Bind();
 	VBO.Bind();
+	unsigned int ind = 0;
 	// Vertex
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glEnableVertexAttribArray(ind);
+	//glVertexAttribPointer(ind++, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glVertexAttribPointer(ind++, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//// Normals
+	glEnableVertexAttribArray(ind);
+	glVertexAttribPointer(ind++, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(VBO.POSITIONS));
 	VBO.Unbind();
 }
 
