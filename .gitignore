@@ -39,7 +39,7 @@ assimp/
 assimp-5.3.1/
 Textures/
 objects/
-models/
+res/models/
 
 /out
 bin/
@@ -47,3 +47,5 @@ build/
 /.vs
 .idea/
 CMakeSettings.json
+
+res/database/
