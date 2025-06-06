@@ -33,7 +33,7 @@ uniform mat4 projection;
 
 void main()
 {
-    Height = vec3(aPos.y / 256);
+    Height = vec3(aPos.y / 1024);
     Position = (view * model * vec4(aPos, 1.0)).xyz;
     FragPos = vec3(model * vec4(aPos, 1.0f));
     Normal = mat3(transpose(inverse(model))) * aNormal;

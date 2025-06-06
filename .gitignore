@@ -39,6 +39,7 @@ assimp/
 assimp-5.3.1/
 Textures/
 objects/
+models/
 
 /out
 bin/

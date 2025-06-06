@@ -19,10 +19,10 @@ public:
     void setInt(const GLchar* name, int value);
     void setFloat(const GLchar* name, float value);
 
-    void Uniform_matrix(const GLchar* name, glm::mat4& trans);
-
-    void setVec3(const GLchar* name, glm::vec3& values);
+    void setVec2(const GLchar* name, const glm::vec2& values);
+    void setVec3(const GLchar* name, const glm::vec3& values);
     void setVec3(const GLchar* name, float firestValue, float secondValue, float thirdValue);
+    void setVec4(const GLchar* name, const glm::vec4& values);
 
     void setMat4(const GLchar* name, const glm::mat4& mat);
 

@@ -26,13 +26,25 @@ public:
 
 	void ProcessKeyPress(CameraMovement, float);
 	void ProcessKeyPress(CameraMovement direction, float delta_time, glm::vec3 objectFront, glm::vec3 objectUp = glm::vec3(0.0f, 1.0f, 0.0f));
+	void ProcessKeyPress(glm::vec3 planeMovement);
 	void ProcessMouseMove(float xOffset, float yOffset);
 
 	glm::vec3 getCameraPosition();
 	void setCameraPosition(glm::vec3 cameraPosition);
 	glm::vec3 getCameraFront();
+	glm::vec3 getCameraUp();
 	void setCameraFront(glm::vec3 cameraFront);
+
+	void setCameraUp(glm::vec3 cameraUp);
+	void setCameraRight(glm::vec3 cameraRight);
+
 	void resetCamera();
+
+	void setYaw(float y);
+	void setPitch(float p);
+	void resetRoll();
+
+
 private:
 	float yaw = -90.0f, pitch = 0.0f;
 	float movementSpeed, mouseSensitivity, actualSpeed;

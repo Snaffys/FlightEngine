@@ -39,6 +39,11 @@ void Camera::ProcessKeyPress(CameraMovement direction, float delta_time, glm::ve
 		cameraPosition -= actualSpeed * objectUp;
 }
 
+void Camera::ProcessKeyPress(glm::vec3 planeMovement) {
+	// Moves camera
+	cameraPosition = planeMovement;
+}
+
 void Camera::ProcessMouseMove(float x_offset, float y_offset) {
 	x_offset *= mouseSensitivity;
 	y_offset *= mouseSensitivity;
@@ -80,9 +85,36 @@ glm::mat4 Camera::getViewMatrix() {
 	return glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
 }
 
+void Camera::setCameraUp(glm::vec3 cameraUp) {
+	this->cameraUp = cameraUp;
+}
+void Camera::setCameraRight(glm::vec3 cameraRight) {
+	//this->cameraRight = cameraRight;
+}
+
+glm::vec3 Camera::getCameraUp() {
+	return cameraUp;
+};
+
 void Camera::resetCamera() {
 	yaw = -90.0f;
 	pitch = 0.0f;
 };
 
 
+void Camera::setYaw(float y) {
+	yaw = y;
+}
+
+void Camera::setPitch(float p) {
+	pitch = p;
+}
+
+void Camera::resetRoll() {
+	// Calculate the right vector using the world's up vector (0, 1, 0)
+	glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 cameraRight = glm::normalize(glm::cross(worldUp, cameraFront));
+
+	// Recalculate the camera's up vector to ensure no roll
+	cameraUp = glm::normalize(glm::cross(cameraFront, cameraRight));
+};

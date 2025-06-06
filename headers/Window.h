@@ -11,10 +11,10 @@
 //#include "VAO.h"
 //#include "Camera.h"
 //#include "IBO.h"
-#include "FBO.h"
+#include "Buffers/FBO.h"
 //#include "Texture.h"
-#include "Terrain.h"
-#include "Model.h"
+#include "Terrain/Terrain.h"
+#include "Model/Model.h"
 
 #include "unordered_map"
 //#include <glm/vec2.hpp>
@@ -22,6 +22,16 @@
 #include <thread>
 
 #include <queue>
+
+#include "DB.h"
+#include "Aircraft.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include "Shader.h"
+#include "ParticleManager/ParticleGenerator.h"
+
 
 //#include <thread>
 //#include <mutex>
@@ -35,8 +45,11 @@ public:
 
 	~Window();
 private:
+	std::vector<Particle>  particles;
+	unsigned int nrParticles = 500;
 
-	void ProcessMouseMove1(float x_offset, float y_offset);
+
+	void processCameraRotation(float turnRate, float pitch, float roll);
 
 
 	GLFWwindow* window;
@@ -50,7 +63,7 @@ private:
 	float lastFrame = 0.0f;
 
 
-
+	float currentRoll = 0.0f;
 
 	// input callbacks
 	static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -81,7 +94,8 @@ private:
 
 	float exposure = 1.0f;
 
-	Terrain terrain;
+	std::unique_ptr<Terrain> terrain;
+	//Terrain terrain;
 	int nOutputDepth = 257;
 	int nOctaveCount = 8;
 	float fScalingBias = 2.0f;
@@ -95,8 +109,7 @@ private:
 
 
 
-	float planeRotationDegreesHorizontal = 0;
-	float planeRotationDegreesVertical = 0;
+
 	glm::vec3 planePosition = glm::vec3(0.0);
 	glm::vec3 planeFront = glm::vec3(0, 0, -1);
 
@@ -104,11 +117,41 @@ private:
 	bool freeCamera = true;
 	bool shiftWasPressed = false;
 	bool freeCamPrevious = true;
-	glm::vec2 savedCursorPos = glm::vec2(0,0);
+	double savedCursorPosX = 0;
+	double savedCursorPosY = 0;
 	float turnRate = 0;
 	glm::quat cameraOrientation = glm::quat(1, 0, 0, 0);
 
-	Model modelM;
+	Model planeModel;
+
+	glm::vec3 planeUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	bool firstHalf = true;
+
+	//DB db;
+	Aircraft aircraft;
+
+
+	glm::quat planeOrientation = glm::quat(1, 0, 0, 0);
+
+
+	glm::vec3 planeFor = glm::vec3(0.0f,0.0f,-1.0f);
+
+	glm::vec3 planeRight = glm::vec3(1.0f,0.0f,0.0f);
+	void rollChange(float roll);
+	void pitchChange(float pitch);
+	//void yawChange(float yaw);
+	void yawChange();
+
+	float smoothstep(float edge0, float edge1, float x);
+	bool resetRollAngle = false;
+	bool resetPitchAngle = false;
+
+	void resetRoll();
+
+	DB db;
+
+	ParticleGenerator snowParticles;
+	ParticleGenerator fireParticles;
 };
 
 

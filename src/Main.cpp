@@ -3,8 +3,9 @@
 
 #include <Application.h>
 #include <Window.h>
-//#include <experimental/simd>
-//#include "mr-math/math.hpp"
+
+#include <openAL/al.h>
+#include <openAL/alc.h>
 
 void error_callback(int error, const char* description);
 
@@ -16,6 +17,7 @@ int main() {
     Window window;
     srand(time(NULL));
     window.launch();
+
     
     return 0;
 }

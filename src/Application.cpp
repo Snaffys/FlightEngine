@@ -1,5 +1,4 @@
 #include <Application.h>
-#include <iostream>
 
 Application::Application(unsigned int majVer, unsigned int minVer) {
 	// Initialize GLFW library
